@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShiftLog — Staff Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12161c;
+    --bg-elev:#1a2029;
+    --bg-elev-2:#20273233;
+    --card:#1a2029;
+    --border:#262d38;
+    --text:#edeef0;
+    --text-dim:#8a93a3;
+    --text-faint:#5b6472;
+    --accent:#e8a93b;
+    --accent-ink:#12161c;
+    --present:#3fa796;
+    --absent:#c1443c;
+    --late:#e8a93b;
+    --leave:#6c7bd1;
+    --stamp:#c1443c;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(circle at 15% 0%, #1c2330 0%, transparent 45%),
+      radial-gradient(circle at 85% 100%, #1a222c 0%, transparent 40%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono', monospace;}
+  h1,h2,h3,.display{
+    font-family:'Oswald', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    font-weight:600;
+  }
+  button{font-family:inherit; cursor:pointer;}
+  input, select, textarea{
+    font-family:'Inter', sans-serif;
+    background:#0f1319;
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:8px;
+    padding:11px 13px;
+    font-size:14.5px;
+    width:100%;
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input:focus, select:focus, textarea:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(232,169,59,0.12);
+  }
+  ::placeholder{color:var(--text-faint);}
+  a{color:inherit;}
+
+  /* ---------- App shell / view switching ---------- */
+  #app{min-height:100vh; display:flex; flex-direction:column;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .hidden{display:none !important;}
+
+  /* ---------- Top bar (perforated ticket edge) ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 28px;
+    background:var(--bg-elev);
+    border-bottom:1px solid var(--border);
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{display:flex; align-items:center; gap:11px;}
+  .brand .mark{
+    width:34px; height:34px; border-radius:9px;
+    background:linear-gradient(160deg, var(--accent), #c8862a);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald'; font-weight:700; color:#181205; font-size:16px;
+    box-shadow:0 2px 10px rgba(232,169,59,0.25);
+  }
+  .brand .name{font-size:17px; letter-spacing:0.08em;}
+  .brand .tag{font-size:10.5px; color:var(--text-faint); letter-spacing:0.12em; text-transform:uppercase; margin-top:1px;}
+  .who{display:flex; align-items:center; gap:14px;}
+  .who .id-chip{
+    font-family:'JetBrains Mono'; font-size:12.5px; color:var(--text-dim);
+    background:#0f1319; border:1px solid var(--border); padding:6px 11px; border-radius:20px;
+  }
+  .btn-ghost{
+    background:transparent; border:1px solid var(--border); color:var(--text-dim);
+    padding:8px 15px; border-radius:8px; font-size:13px; font-weight:500;
+    transition:all .15s ease;
+  }
+  .btn-ghost:hover{border-color:var(--absent); color:var(--absent);}
+
+  main{flex:1; padding:28px; max-width:1180px; margin:0 auto; width:100%;}
+
+  /* ==================================================
+     LOGIN VIEW
+  ================================================== */
+  .login-wrap{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .login-box{
+    width:100%; max-width:420px;
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:36px 32px 30px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.6);
+    position:relative;
+  }
+  .login-hero{text-align:center; margin-bottom:26px;}
+  .login-hero .mark-big{
+    width:56px; height:56px; border-radius:14px; margin:0 auto 14px;
+    background:linear-gradient(160deg, var(--accent), #c8862a);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald'; font-weight:700; color:#181205; font-size:24px;
+    box-shadow:0 6px 20px rgba(232,169,59,0.3);
+  }
+  .login-hero h1{font-size:26px; letter-spacing:0.06em;}
+  .login-hero p{color:var(--text-dim); font-size:13.5px; margin-top:6px;}
+
+  .role-toggle{
+    display:flex; background:#0f1319; border:1px solid var(--border);
+    border-radius:10px; padding:4px; margin-bottom:22px;
+  }
+  .role-toggle button{
+    flex:1; padding:10px 0; border:none; background:transparent; color:var(--text-dim);
+    border-radius:7px; font-size:13px; font-weight:600; letter-spacing:0.03em;
+    transition:all .15s ease;
+  }
+  .role-toggle button.active{background:var(--accent); color:#181205;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; letter-spacing:0.03em; text-transform:uppercase;}
+  .login-submit{
+    width:100%; margin-top:8px; padding:13px 0; border:none; border-radius:9px;
+    background:var(--accent); color:#181205; font-weight:700; font-size:14.5px;
+    letter-spacing:0.04em; text-transform:uppercase; font-family:'Oswald';
+    transition:transform .1s ease, box-shadow .15s ease;
+  }
+  .login-submit:hover{transform:translateY(-1px); box-shadow:0 8px 20px rgba(232,169,59,0.25);}
+  .login-submit:active{transform:translateY(0);}
+  .login-error{
+    background:rgba(193,68,60,0.12); border:1px solid rgba(193,68,60,0.4); color:#e8877e;
+    font-size:13px; padding:9px 12px; border-radius:8px; margin-bottom:14px; display:none;
+  }
+  .login-hint{text-align:center; font-size:12px; color:var(--text-faint); margin-top:16px;}
+  .login-hint button{background:none; border:none; color:var(--accent); font-size:12px; text-decoration:underline; cursor:pointer;}
+
+  /* ==================================================
+     STAT CARDS
+  ================================================== */
+  .stat-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr));
+    gap:14px; margin-bottom:24px;
+  }
+  .stat-card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px; display:flex; align-items:center; gap:14px;
+  }
+  .stat-icon{
+    width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-size:17px; flex-shrink:0;
+  }
+  .stat-icon.present{background:rgba(63,167,150,0.15); color:var(--present);}
+  .stat-icon.absent{background:rgba(193,68,60,0.15); color:var(--absent);}
+  .stat-icon.late{background:rgba(232,169,59,0.15); color:var(--late);}
+  .stat-icon.leave{background:rgba(108,123,209,0.15); color:var(--leave);}
+  .stat-label{font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.05em;}
+  .stat-num{font-family:'JetBrains Mono'; font-size:24px; font-weight:700; margin-top:2px;}
+
+  /* ==================================================
+     PUNCH CARD (signature element)
+  ================================================== */
+  .punch-section{
+    display:grid; grid-template-columns:340px 1fr; gap:22px; margin-bottom:26px;
+  }
+  @media (max-width:760px){.punch-section{grid-template-columns:1fr;}}
+
+  .punch-card{
+    background:linear-gradient(180deg, #fdfaf2, #f3ecd8);
+    color:#2a2620;
+    border-radius:6px;
+    padding:22px 20px 18px;
+    position:relative;
+    box-shadow:0 20px 40px -14px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.06);
+    font-family:'JetBrains Mono', monospace;
+    overflow:hidden;
+  }
+  .punch-card::before{
+    content:"";
+    position:absolute; left:0; top:0; bottom:0; width:20px;
+    background-image: radial-gradient(circle at 10px 14px, var(--bg) 5px, transparent 5.5px);
+    background-size:20px 26px;
+    background-repeat:repeat-y;
+    background-position: 0 6px;
+    opacity:0.9;
+  }
+  .punch-card .pc-inner{margin-left:22px;}
+  .punch-card .pc-head{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    border-bottom:1px dashed #b9ae8f; padding-bottom:10px; margin-bottom:12px;
+  }
+  .punch-card .pc-label{font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#7a715a;}
+  .punch-card .pc-name{font-family:'Oswald'; font-size:17px; text-transform:none; color:#2a2620; letter-spacing:0.01em;}
+  .punch-card .pc-id{font-size:11.5px; color:#7a715a; margin-top:2px;}
+  .punch-card .pc-date{font-size:11.5px; text-align:right; color:#7a715a;}
+  .pc-rows{display:flex; flex-direction:column; gap:7px; min-height:64px; margin-bottom:14px;}
+  .pc-row{display:flex; justify-content:space-between; font-size:12.5px; color:#4a4436;}
+  .pc-row span:last-child{font-weight:700;}
+  .pc-empty{font-size:12px; color:#a89f85; font-style:italic;}
+  .stamp-zone{position:relative; min-height:74px; display:flex; align-items:center; justify-content:center;}
+  .stamp{
+    font-family:'Oswald'; font-weight:700; font-size:15px; letter-spacing:0.08em;
+    color:var(--stamp); border:3px solid var(--stamp); border-radius:8px;
+    padding:8px 16px; transform:rotate(-6deg) scale(0);
+    text-transform:uppercase; opacity:0;
+    box-shadow:0 0 0 2px rgba(193,68,60,0.15) inset;
+  }
+  .stamp.show{animation:stampIn .38s cubic-bezier(.2,1.6,.4,1) forwards;}
+  @keyframes stampIn{
+    0%{transform:rotate(-6deg) scale(2.6); opacity:0;}
+    60%{transform:rotate(-6deg) scale(0.9); opacity:1;}
+    100%{transform:rotate(-6deg) scale(1); opacity:1;}
+  }
+
+  .punch-actions{display:flex; flex-direction:column; justify-content:center; gap:14px;}
+  .punch-btn{
+    border:none; border-radius:var(--radius); padding:22px 24px;
+    font-family:'Oswald'; font-size:19px; text-transform:uppercase; letter-spacing:0.05em;
+    display:flex; align-items:center; justify-content:space-between;
+    transition:transform .1s ease, box-shadow .15s ease;
+  }
+  .punch-btn:active{transform:scale(0.985);}
+  .punch-btn.in{background:linear-gradient(135deg, var(--present), #2c8577); color:#0c1a17;}
+  .punch-btn.out{background:linear-gradient(135deg, var(--absent), #9c332c); color:#1a0d0b;}
+  .punch-btn:disabled{opacity:0.35; cursor:not-allowed; filter:grayscale(0.4);}
+  .punch-btn .arrow{font-size:22px;}
+  .punch-status-note{font-size:12.5px; color:var(--text-dim); text-align:center;}
+
+  /* ==================================================
+     TABS
+  ================================================== */
+  .tabs{display:flex; gap:6px; border-bottom:1px solid var(--border); margin-bottom:20px;}
+  .tab{
+    background:transparent; border:none; color:var(--text-dim); padding:11px 4px; margin-right:22px;
+    font-family:'Oswald'; text-transform:uppercase; letter-spacing:0.05em; font-size:13.5px;
+    border-bottom:2px solid transparent; transition:color .15s ease, border-color .15s ease;
+  }
+  .tab.active{color:var(--accent); border-color:var(--accent);}
+  .tab:hover{color:var(--text);}
+
+  /* ==================================================
+     PANELS / CARDS / TABLES
+  ================================================== */
+  .panel{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:20px 22px; margin-bottom:20px;
+  }
+  .panel-head{display:flex; align-items:center; justify-content:between; justify-content:space-between; margin-bottom:16px; gap:12px; flex-wrap:wrap;}
+  .panel-title{font-size:15px; display:flex; align-items:center; gap:8px;}
+  .panel-sub{color:var(--text-dim); font-size:12px; margin-top:2px; text-transform:none; letter-spacing:0; font-family:'Inter';}
+
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
+  @media (max-width:640px){.row2,.row3{grid-template-columns:1fr;}}
+
+  .btn{
+    background:var(--accent); color:#181205; border:none; border-radius:8px;
+    padding:10px 18px; font-weight:700; font-size:13.5px; letter-spacing:0.02em;
+    font-family:'Oswald'; text-transform:uppercase;
+    transition:transform .1s ease;
+  }
+  .btn:hover{transform:translateY(-1px);}
+  .btn.secondary{background:transparent; border:1px solid var(--border); color:var(--text);}
+  .btn.danger{background:var(--absent); color:#fff;}
+  .btn.small{padding:6px 12px; font-size:11.5px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  thead th{
+    text-align:left; color:var(--text-faint); font-size:11px; text-transform:uppercase;
+    letter-spacing:0.06em; padding:0 10px 10px; border-bottom:1px solid var(--border); font-weight:600;
+  }
+  tbody td{padding:12px 10px; border-bottom:1px solid #1e242e; vertical-align:middle;}
+  tbody tr:hover{background:#1e2530;}
+  .table-scroll{overflow-x:auto;}
+
+  .avatar{
+    width:30px; height:30px; border-radius:8px; background:#242c38; color:var(--text-dim);
+    display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    margin-right:9px; font-family:'Oswald';
+  }
+  .pill{
+    display:inline-block; padding:4px 11px; border-radius:20px; font-size:11.5px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.03em;
+  }
+  .pill.present{background:rgba(63,167,150,0.16); color:var(--present);}
+  .pill.absent{background:rgba(193,68,60,0.16); color:var(--absent);}
+  .pill.late{background:rgba(232,169,59,0.16); color:var(--late);}
+  .pill.leave{background:rgba(108,123,209,0.16); color:var(--leave);}
+
+  .empty-state{text-align:center; padding:40px 20px; color:var(--text-faint);}
+  .empty-state .e-icon{font-size:26px; margin-bottom:8px;}
+  .empty-state p{font-size:13px;}
+
+  .icon-btn{
+    background:transparent; border:1px solid var(--border); color:var(--text-dim);
+    width:30px; height:30px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+    font-size:13px; margin-left:5px;
+  }
+  .icon-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .icon-btn.del:hover{border-color:var(--absent); color:var(--absent);}
+
+  /* ==================================================
+     MODAL
+  ================================================== */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(6,8,11,0.65); display:none;
+    align-items:center; justify-content:center; z-index:100; padding:20px;
+    backdrop-filter:blur(2px);
+  }
+  .modal-backdrop.active{display:flex;}
+  .modal{
+    background:var(--bg-elev); border:1px solid var(--border); border-radius:16px;
+    width:100%; max-width:440px; padding:26px 26px 22px;
+    box-shadow:0 30px 70px -20px rgba(0,0,0,0.7);
+  }
+  .modal h3{font-size:17px; margin-bottom:18px;}
+  .modal .field{margin-bottom:13px;}
+  .modal-actions{display:flex; gap:10px; margin-top:18px;}
+  .modal-actions .btn{flex:1;}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--bg-elev); border:1px solid var(--border); color:var(--text);
+    padding:12px 20px; border-radius:10px; font-size:13.5px; z-index:200;
+    opacity:0; transition:all .25s ease; box-shadow:0 10px 30px rgba(0,0,0,0.4);
+    display:flex; align-items:center; gap:8px;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast .dot{width:7px; height:7px; border-radius:50%; background:var(--present);}
+
+  .search-bar{position:relative; max-width:260px;}
+
+  footer{text-align:center; padding:20px; color:var(--text-faint); font-size:11.5px;}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ================= LOGIN VIEW ================= -->
+  <div class="view active" id="view-login">
+    <div class="login-wrap">
+      <div class="login-box">
+        <div class="login-hero">
+          <div class="mark-big">S</div>
+          <h1>ShiftLog</h1>
+          <p>Clock in, clock out, keep it honest.</p>
+        </div>
+
+        <div class="role-toggle">
+          <button id="tab-worker" class="active" onclick="setLoginRole('worker')">Worker</button>
+          <button id="tab-admin" onclick="setLoginRole('admin')">Administrator</button>
+        </div>
+
+        <div class="login-error" id="login-error"></div>
+
+        <!-- Worker login -->
+        <form id="form-worker-login" onsubmit="return handleWorkerLogin(event)">
+          <div class="field">
+            <label>Staff ID</label>
+            <input type="text" id="w-staffid" placeholder="e.g., STF001" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label>PIN</label>
+            <input type="password" id="w-pin" placeholder="4-digit PIN" inputmode="numeric" maxlength="8" required>
+          </div>
+          <button class="login-submit" type="submit">Clock In / Out →</button>
+        </form>
+
+        <!-- Admin login -->
+        <form id="form-admin-login" class="hidden" onsubmit="return handleAdminLogin(event)">
+          <div class="field">
+            <label>Username</label>
+            <input type="text" id="a-username" placeholder="admin" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="a-password" placeholder="••••••••" required>
+          </div>
+          <button class="login-submit" type="submit">Sign In to Dashboard →</button>
+        </form>
+
+        <div class="login-hint" id="login-hint">
+          First time? Default admin login is <strong class="mono">admin</strong> / <strong class="mono">admin123</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= WORKER VIEW ================= -->
+  <div class="view" id="view-worker">
+    <div class="topbar">
+      <div class="brand">
+        <div class="mark">S</div>
+        <div>
+          <div class="name">ShiftLog</div>
+          <div class="tag">Worker Portal</div>
+        </div>
+      </div>
+      <div class="who">
+        <span class="id-chip" id="worker-chip">—</span>
+        <button class="btn-ghost" onclick="logout()">Log out</button>
+      </div>
+    </div>
+    <main>
+      <div class="punch-section">
+        <div class="punch-card">
+          <div class="pc-inner">
+            <div class="pc-head">
+              <div>
+                <div class="pc-label">Time Card</div>
+                <div class="pc-name" id="pc-name">—</div>
+                <div class="pc-id" id="pc-id">—</div>
+              </div>
+              <div class="pc-date" id="pc-date">—</div>
+            </div>
+            <div class="pc-rows" id="pc-rows"></div>
+            <div class="stamp-zone" id="stamp-zone"></div>
+          </div>
+        </div>
+        <div class="punch-actions">
+          <button class="punch-btn in" id="btn-clockin" onclick="workerClockIn()">
+            Clock In <span class="arrow">↳</span>
+          </button>
+          <button class="punch-btn out" id="btn-clockout" onclick="workerClockOut()">
+            Clock Out <span class="arrow">↴</span>
+          </button>
+          <div class="punch-status-note" id="punch-note">Ready when you are.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-title">My Recent Punches</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table id="worker-history-table">
+            <thead><tr><th>Date</th><th>In</th><th>Out</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody id="worker-history-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= ADMIN VIEW ================= -->
+  <div class="view" id="view-admin">
+    <div class="topbar">
+      <div class="brand">
+        <div class="mark">S</div>
+        <div>
+          <div class="name">ShiftLog</div>
+          <div class="tag">Administrator</div>
+        </div>
+      </div>
+      <div class="who">
+        <span class="id-chip" id="admin-chip">—</span>
+        <button class="btn-ghost" onclick="openChangePassword()">Change password</button>
+        <button class="btn-ghost" onclick="logout()">Log out</button>
+      </div>
+    </div>
+    <main>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-icon present">✓</div><div><div class="stat-label">Present Today</div><div class="stat-num" id="stat-present">0</div></div></div>
+        <div class="stat-card"><div class="stat-icon absent">✕</div><div><div class="stat-label">Absent Today</div><div class="stat-num" id="stat-absent">0</div></div></div>
+        <div class="stat-card"><div class="stat-icon late">⏱</div><div><div class="stat-label">Late Today</div><div class="stat-num" id="stat-late">0</div></div></div>
+        <div class="stat-card"><div class="stat-icon leave">▤</div><div><div class="stat-label">On Leave</div><div class="stat-num" id="stat-leave">0</div></div></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="overview" onclick="setAdminTab('overview')">Overview</button>
+        <button class="tab" data-tab="workers" onclick="setAdminTab('workers')">Workers</button>
+        <button class="tab" data-tab="records" onclick="setAdminTab('records')">Records</button>
+      </div>
+
+      <!-- OVERVIEW TAB -->
+      <div class="admin-tab" id="tab-overview">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Today's Log — <span id="overview-date" class="mono"></span></div>
+              <div class="panel-sub">Live view of who has punched in today.</div>
+            </div>
+            <button class="btn secondary small" onclick="openManualRecordModal()">+ Manual Entry</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Staff</th><th>Department</th><th>In</th><th>Out</th><th>Status</th><th></th></tr></thead>
+              <tbody id="overview-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state hidden" id="overview-empty"><div class="e-icon">◌</div><p>No punches recorded yet today.</p></div>
+        </div>
+      </div>
+
+      <!-- WORKERS TAB -->
+      <div class="admin-tab hidden" id="tab-workers">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Workforce Directory</div>
+              <div class="panel-sub">Add staff, assign departments, and set clock-in PINs.</div>
+            </div>
+            <button class="btn small" onclick="openWorkerModal()">+ Add Worker</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Staff</th><th>Staff ID</th><th>Department</th><th>PIN</th><th>Status</th><th></th></tr></thead>
+              <tbody id="workers-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state hidden" id="workers-empty"><div class="e-icon">◌</div><p>No workers added yet. Add your first staff member.</p></div>
+        </div>
+      </div>
+
+      <!-- RECORDS TAB -->
+      <div class="admin-tab hidden" id="tab-records">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Attendance Records</div>
+              <div class="panel-sub">Full history across every worker and date.</div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <input type="text" id="records-search" placeholder="Search name or staff ID…" style="width:200px" oninput="renderRecords()">
+              <select id="records-filter" style="width:150px" onchange="renderRecords()">
+                <option value="all">All statuses</option>
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="Late">Late</option>
+                <option value="On Leave">On Leave</option>
+              </select>
+              <button class="btn secondary small" onclick="exportCSV()">Export CSV</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Staff</th><th>Department</th><th>Date</th><th>In</th><th>Out</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+              <tbody id="records-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state hidden" id="records-empty"><div class="e-icon">◌</div><p>No records match your search.</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-backdrop" id="modal-worker">
+  <div class="modal">
+    <h3 id="worker-modal-title">Add Worker</h3>
+    <form onsubmit="return saveWorker(event)">
+      <input type="hidden" id="worker-edit-id">
+      <div class="field"><label>Full Name</label><input type="text" id="mw-name" required></div>
+      <div class="row2">
+        <div class="field"><label>Staff ID</label><input type="text" id="mw-staffid" placeholder="STF00X" required></div>
+        <div class="field"><label>PIN (4 digits)</label><input type="text" id="mw-pin" placeholder="1234" maxlength="8" required></div>
+      </div>
+      <div class="field">
+        <label>Department</label>
+        <select id="mw-dept">
+          <option>Warehouse</option>
+          <option>Sales Floor</option>
+          <option>Kitchen</option>
+          <option>Logistics</option>
+          <option>Security</option>
+          <option>Maintenance</option>
+          <option>Front Office</option>
+          <option>Custom…</option>
+        </select>
+      </div>
+      <div class="field hidden" id="mw-dept-custom-wrap">
+        <label>Custom department name</label>
+        <input type="text" id="mw-dept-custom" placeholder="Type department">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" onclick="closeModal('modal-worker')">Cancel</button>
+        <button type="submit" class="btn">Save Worker</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-record">
+  <div class="modal">
+    <h3>Manual Attendance Entry</h3>
+    <form onsubmit="return saveManualRecord(event)">
+      <div class="field">
+        <label>Worker</label>
+        <select id="mr-worker" required></select>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Date</label><input type="date" id="mr-date" required></div>
+        <div class="field"><label>Status</label>
+          <select id="mr-status">
+            <option>Present</option>
+            <option>Absent</option>
+            <option>Late</option>
+            <option>On Leave</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Check In</label><input type="time" id="mr-in"></div>
+        <div class="field"><label>Check Out</label><input type="time" id="mr-out"></div>
+      </div>
+      <div class="field"><label>Notes</label><input type="text" id="mr-notes" placeholder="Optional"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" onclick="closeModal('modal-record')">Cancel</button>
+        <button type="submit" class="btn">Save Entry</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-password">
+  <div class="modal">
+    <h3>Change Admin Password</h3>
+    <form onsubmit="return changeAdminPassword(event)">
+      <div class="field"><label>Current Password</label><input type="password" id="cp-current" required></div>
+      <div class="field"><label>New Password</label><input type="password" id="cp-new" required></div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" onclick="closeModal('modal-password')">Cancel</button>
+        <button type="submit" class="btn">Update Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="dot"></span><span id="toast-msg"></span></div>
+
+<script>
+/* ==========================================================
+   ShiftLog — storage layer (localStorage)
+========================================================== */
+const DB = {
+  workers:  'sl_workers',
+  admins:   'sl_admins',
+  records:  'sl_records',
+  session:  'sl_session'
+};
+
+function load(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+function ensureSeed(){
+  if(!localStorage.getItem(DB.admins)){
+    save(DB.admins, [{ username:'admin', password:'admin123' }]);
+  }
+  if(!localStorage.getItem(DB.workers)){
+    save(DB.workers, [
+      { id: uid(), staffId:'STF001', name:'Grace Nakato', department:'Warehouse', pin:'1234', active:true },
+      { id: uid(), staffId:'STF002', name:'Peter Okello', department:'Logistics', pin:'2345', active:true }
+    ]);
+  }
+  if(!localStorage.getItem(DB.records)){
+    save(DB.records, []);
+  }
+}
+function uid(){ return 'id' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+let workers = [];
+let admins  = [];
+let records = [];
+function refreshData(){
+  workers = load(DB.workers, []);
+  admins  = load(DB.admins, []);
+  records = load(DB.records, []);
+}
+
+/* ==========================================================
+   Helpers
+========================================================== */
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function niceDate(iso){
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+}
+function nowTime(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function initials(name){
+  return name.split(' ').filter(Boolean).slice(0,2).map(p=>p[0].toUpperCase()).join('');
+}
+function pillClass(status){
+  return { Present:'present', Absent:'absent', Late:'late', 'On Leave':'leave' }[status] || 'present';
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> t.classList.remove('show'), 2400);
+}
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
+/* ==========================================================
+   Session / routing
+========================================================== */
+let session = load(DB.session, null);
+let loginRole = 'worker';
+
+function setLoginRole(role){
+  loginRole = role;
+  document.getElementById('tab-worker').classList.toggle('active', role==='worker');
+  document.getElementById('tab-admin').classList.toggle('active', role==='admin');
+  document.getElementById('form-worker-login').classList.toggle('hidden', role!=='worker');
+  document.getElementById('form-admin-login').classList.toggle('hidden', role!=='admin');
+  document.getElementById('login-hint').classList.toggle('hidden', role!=='admin');
+  document.getElementById('login-error').style.display = 'none';
+}
+
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+}
+
+function loginError(msg){
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function handleWorkerLogin(e){
+  e.preventDefault();
+  refreshData();
+  const staffId = document.getElementById('w-staffid').value.trim();
+  const pin = document.getElementById('w-pin').value.trim();
+  const worker = workers.find(w => w.staffId.toLowerCase() === staffId.toLowerCase() && w.pin === pin);
+  if(!worker){ loginError('Staff ID or PIN not recognized. Check with your administrator.'); return false; }
+  if(worker.active === false){ loginError('This staff account has been deactivated.'); return false; }
+  session = { role:'worker', workerId: worker.id };
+  save(DB.session, session);
+  enterWorker();
+  return false;
+}
+
+function handleAdminLogin(e){
+  e.preventDefault();
+  refreshData();
+  const u = document.getElementById('a-username').value.trim();
+  const p = document.getElementById('a-password').value;
+  const admin = admins.find(a => a.username.toLowerCase() === u.toLowerCase() && a.password === p);
+  if(!admin){ loginError('Incorrect username or password.'); return false; }
+  session = { role:'admin', username: admin.username };
+  save(DB.session, session);
+  enterAdmin();
+  return false;
+}
+
+function logout(){
+  session = null;
+  localStorage.removeItem(DB.session);
+  document.getElementById('w-staffid').value='';
+  document.getElementById('w-pin').value='';
+  document.getElementById('a-password').value='';
+  showView('login');
+}
+
+/* ==========================================================
+   WORKER VIEW
+========================================================== */
+function enterWorker(){
+  refreshData();
+  const worker = workers.find(w => w.id === session.workerId);
+  if(!worker){ logout(); return; }
+  document.getElementById('worker-chip').textContent = worker.staffId + ' · ' + worker.department;
+  document.getElementById('pc-name').textContent = worker.name;
+  document.getElementById('pc-id').textContent = worker.staffId + ' — ' + worker.department;
+  document.getElementById('pc-date').textContent = niceDate(todayISO());
+  renderPunchCard(worker);
+  renderWorkerHistory(worker);
+  showView('worker');
+}
+
+function getTodayRecord(worker){
+  return records.find(r => r.staffId === worker.staffId && r.date === todayISO());
+}
+
+function renderPunchCard(worker){
+  const rec = getTodayRecord(worker);
+  const rows = document.getElementById('pc-rows');
+  const stampZone = document.getElementById('stamp-zone');
+  const btnIn = document.getElementById('btn-clockin');
+  const btnOut = document.getElementById('btn-clockout');
+  const note = document.getElementById('punch-note');
+
+  rows.innerHTML = '';
+  stampZone.innerHTML = '';
+
+  if(!rec){
+    rows.innerHTML = '<div class="pc-empty">No punch recorded today yet.</div>';
+    btnIn.disabled = false; btnOut.disabled = true;
+    note.textContent = 'Ready when you are.';
+    return;
+  }
+
+  rows.innerHTML = `
+    <div class="pc-row"><span>Check In</span><span>${rec.checkIn || '—'}</span></div>
+    <div class="pc-row"><span>Check Out</span><span>${rec.checkOut || '—'}</span></div>
+    <div class="pc-row"><span>Status</span><span>${rec.status}</span></div>
+  `;
+
+  const stampLabel = rec.checkOut ? 'Punched Out' : 'Punched In';
+  const st = document.createElement('div');
+  st.className = 'stamp show';
+  st.textContent = stampLabel;
+  stampZone.appendChild(st);
+
+  btnIn.disabled = !!rec.checkIn;
+  btnOut.disabled = !rec.checkIn || !!rec.checkOut;
+  note.textContent = rec.checkOut ? 'All done for today. See you tomorrow.' : (rec.checkIn ? 'Clocked in — remember to clock out.' : 'Ready when you are.');
+}
+
+function workerClockIn(){
+  refreshData();
+  const worker = workers.find(w => w.id === session.workerId);
+  const date = todayISO();
+  let rec = getTodayRecord(worker);
+  const time = nowTime();
+  const isLate = time > '09:15';
+
+  if(rec && rec.checkIn){ showToast('Already clocked in today.'); return; }
+
+  if(!rec){
+    rec = { id: uid(), staffId: worker.staffId, name: worker.name, department: worker.department,
+             date, checkIn: time, checkOut:'', status: isLate ? 'Late' : 'Present', notes:'' };
+    records.push(rec);
+  }else{
+    rec.checkIn = time;
+    rec.status = isLate ? 'Late' : 'Present';
+  }
+  save(DB.records, records);
+  showToast(isLate ? 'Clocked in — marked late.' : 'Clocked in. Have a good shift.');
+  renderPunchCard(worker);
+  renderWorkerHistory(worker);
+}
+
+function workerClockOut(){
+  refreshData();
+  const worker = workers.find(w => w.id === session.workerId);
+  let rec = getTodayRecord(worker);
+  if(!rec || !rec.checkIn){ showToast('Clock in first.'); return; }
+  if(rec.checkOut){ showToast('Already clocked out today.'); return; }
+  rec.checkOut = nowTime();
+  save(DB.records, records);
+  showToast('Clocked out. Shift logged.');
+  renderPunchCard(worker);
+  renderWorkerHistory(worker);
+}
+
+function renderWorkerHistory(worker){
+  const body = document.getElementById('worker-history-body');
+  const mine = records.filter(r => r.staffId === worker.staffId)
+                       .sort((a,b)=> b.date.localeCompare(a.date)).slice(0,12);
+  if(mine.length === 0){
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-faint); padding:24px;">No history yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = mine.map(r => `
+    <tr>
+      <td class="mono">${niceDate(r.date)}</td>
+      <td class="mono">${r.checkIn || '—'}</td>
+      <td class="mono">${r.checkOut || '—'}</td>
+      <td><span class="pill ${pillClass(r.status)}">${r.status}</span></td>
+      <td style="color:var(--text-dim)">${r.notes || '—'}</td>
+    </tr>
+  `).join('');
+}
+
+/* ==========================================================
+   ADMIN VIEW
+========================================================== */
+function enterAdmin(){
+  refreshData();
+  document.getElementById('admin-chip').textContent = '@' + session.username;
+  document.getElementById('overview-date').textContent = niceDate(todayISO());
+  setAdminTab('overview');
+  showView('admin');
+}
+
+function setAdminTab(tab){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.admin-tab').forEach(p => p.classList.add('hidden'));
+  document.getElementById('tab-'+tab).classList.remove('hidden');
+  refreshData();
+  if(tab === 'overview') renderOverview();
+  if(tab === 'workers') renderWorkers();
+  if(tab === 'records') renderRecords();
+}
+
+function renderStats(){
+  const today = todayISO();
+  const todays = records.filter(r => r.date === today);
+  document.getElementById('stat-present').textContent = todays.filter(r=>r.status==='Present').length;
+  document.getElementById('stat-absent').textContent = todays.filter(r=>r.status==='Absent').length;
+  document.getElementById('stat-late').textContent = todays.filter(r=>r.status==='Late').length;
+  document.getElementById('stat-leave').textContent = todays.filter(r=>r.status==='On Leave').length;
+}
+
+function renderOverview(){
+  renderStats();
+  const today = todayISO();
+  const todays = records.filter(r => r.date === today).sort((a,b)=> (b.checkIn||'').localeCompare(a.checkIn||''));
+  const body = document.getElementById('overview-body');
+  const empty = document.getElementById('overview-empty');
+  if(todays.length === 0){
+    body.innerHTML = ''; empty.classList.remove('hidden'); return;
+  }
+  empty.classList.add('hidden');
+  body.innerHTML = todays.map(r => `
+    <tr>
+      <td><span class="avatar">${initials(r.name)}</span>${r.name}<div style="font-size:11px;color:var(--text-faint)" class="mono">${r.staffId}</div></td>
+      <td>${r.department}</td>
+      <td class="mono">${r.checkIn || '—'}</td>
+      <td class="mono">${r.checkOut || '—'}</td>
+      <td><span class="pill ${pillClass(r.status)}">${r.status}</span></td>
+      <td><button class="icon-btn del" title="Delete" onclick="deleteRecord('${r.id}')">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+/* ---------- Workers tab ---------- */
+function renderWorkers(){
+  const body = document.getElementById('workers-body');
+  const empty = document.getElementById('workers-empty');
+  if(workers.length === 0){ body.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  body.innerHTML = workers.map(w => `
+    <tr>
+      <td><span class="avatar">${initials(w.name)}</span>${w.name}</td>
+      <td class="mono">${w.staffId}</td>
+      <td>${w.department}</td>
+      <td class="mono">${w.pin}</td>
+      <td><span class="pill ${w.active===false ? 'absent' : 'present'}">${w.active===false ? 'Inactive' : 'Active'}</span></td>
+      <td style="white-space:nowrap">
+        <button class="icon-btn" title="Edit" onclick="editWorker('${w.id}')">✎</button>
+        <button class="icon-btn" title="Toggle active" onclick="toggleWorkerActive('${w.id}')">⇄</button>
+        <button class="icon-btn del" title="Delete" onclick="deleteWorker('${w.id}')">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('mw-dept').addEventListener('change', function(){
+  document.getElementById('mw-dept-custom-wrap').classList.toggle('hidden', this.value !== 'Custom…');
+});
+
+function openWorkerModal(){
+  document.getElementById('worker-modal-title').textContent = 'Add Worker';
+  document.getElementById('worker-edit-id').value = '';
+  document.getElementById('mw-name').value = '';
+  document.getElementById('mw-staffid').value = '';
+  document.getElementById('mw-pin').value = '';
+  document.getElementById('mw-dept').value = 'Warehouse';
+  document.getElementById('mw-dept-custom-wrap').classList.add('hidden');
+  document.getElementById('mw-dept-custom').value = '';
+  openModal('modal-worker');
+}
+
+function editWorker(id){
+  refreshData();
+  const w = workers.find(x=>x.id===id);
+  if(!w) return;
+  document.getElementById('worker-modal-title').textContent = 'Edit Worker';
+  document.getElementById('worker-edit-id').value = w.id;
+  document.getElementById('mw-name').value = w.name;
+  document.getElementById('mw-staffid').value = w.staffId;
+  document.getElementById('mw-pin').value = w.pin;
+  const deptSelect = document.getElementById('mw-dept');
+  const knownDepts = Array.from(deptSelect.options).map(o=>o.value).filter(v=>v!=='Custom…');
+  if(knownDepts.includes(w.department)){
+    deptSelect.value = w.department;
+    document.getElementById('mw-dept-custom-wrap').classList.add('hidden');
+  }else{
+    deptSelect.value = 'Custom…';
+    document.getElementById('mw-dept-custom-wrap').classList.remove('hidden');
+    document.getElementById('mw-dept-custom').value = w.department;
+  }
+  openModal('modal-worker');
+}
+
+function saveWorker(e){
+  e.preventDefault();
+  refreshData();
+  const id = document.getElementById('worker-edit-id').value;
+  const name = document.getElementById('mw-name').value.trim();
+  const staffId = document.getElementById('mw-staffid').value.trim();
+  const pin = document.getElementById('mw-pin').value.trim();
+  let dept = document.getElementById('mw-dept').value;
+  if(dept === 'Custom…') dept = document.getElementById('mw-dept-custom').value.trim() || 'General';
+
+  const dupe = workers.find(w => w.staffId.toLowerCase() === staffId.toLowerCase() && w.id !== id);
+  if(dupe){ showToast('That Staff ID is already in use.'); return false; }
+
+  if(id){
+    const w = workers.find(x=>x.id===id);
+    Object.assign(w, { name, staffId, pin, department: dept });
+    showToast('Worker updated.');
+  }else{
+    workers.push({ id: uid(), name, staffId, pin, department: dept, active:true });
+    showToast('Worker added.');
+  }
+  save(DB.workers, workers);
+  closeModal('modal-worker');
+  renderWorkers();
+  return false;
+}
+
+function toggleWorkerActive(id){
+  refreshData();
+  const w = workers.find(x=>x.id===id);
+  w.active = w.active === false ? true : false;
+  save(DB.workers, workers);
+  renderWorkers();
+}
+
+function deleteWorker(id){
+  refreshData();
+  const w = workers.find(x=>x.id===id);
+  if(!confirm(`Remove ${w.name} from the directory? Their past attendance records will be kept.`)) return;
+  workers = workers.filter(x=>x.id!==id);
+  save(DB.workers, workers);
+  renderWorkers();
+  showToast('Worker removed.');
+}
+
+/* ---------- Records tab ---------- */
+function renderRecords(){
+  const body = document.getElementById('records-body');
+  const empty = document.getElementById('records-empty');
+  const q = (document.getElementById('records-search').value || '').toLowerCase();
+  const filter = document.getElementById('records-filter').value;
+
+  let list = [...records].sort((a,b)=> b.date.localeCompare(a.date));
+  if(q) list = list.filter(r => r.name.toLowerCase().includes(q) || r.staffId.toLowerCase().includes(q));
+  if(filter !== 'all') list = list.filter(r => r.status === filter);
+
+  if(list.length === 0){ body.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+
+  body.innerHTML = list.map(r => `
+    <tr>
+      <td><span class="avatar">${initials(r.name)}</span>${r.name}<div style="font-size:11px;color:var(--text-faint)" class="mono">${r.staffId}</div></td>
+      <td>${r.department}</td>
+      <td class="mono">${niceDate(r.date)}</td>
+      <td class="mono">${r.checkIn || '—'}</td>
+      <td class="mono">${r.checkOut || '—'}</td>
+      <td><span class="pill ${pillClass(r.status)}">${r.status}</span></td>
+      <td style="color:var(--text-dim)">${r.notes || '—'}</td>
+      <td><button class="icon-btn del" title="Delete" onclick="deleteRecord('${r.id}')">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+function deleteRecord(id){
+  refreshData();
+  if(!confirm('Delete this attendance record?')) return;
+  records = records.filter(r=>r.id!==id);
+  save(DB.records, records);
+  renderOverview();
+  if(!document.getElementById('tab-records').classList.contains('hidden')) renderRecords();
+}
+
+function openManualRecordModal(){
+  refreshData();
+  const sel = document.getElementById('mr-worker');
+  sel.innerHTML = workers.map(w => `<option value="${w.staffId}">${w.name} (${w.staffId})</option>`).join('');
+  document.getElementById('mr-date').value = todayISO();
+  document.getElementById('mr-status').value = 'Present';
+  document.getElementById('mr-in').value = '';
+  document.getElementById('mr-out').value = '';
+  document.getElementById('mr-notes').value = '';
+  openModal('modal-record');
+}
+
+function saveManualRecord(e){
+  e.preventDefault();
+  refreshData();
+  const staffId = document.getElementById('mr-worker').value;
+  const worker = workers.find(w => w.staffId === staffId);
+  if(!worker){ showToast('Select a worker.'); return false; }
+  const date = document.getElementById('mr-date').value;
+  const status = document.getElementById('mr-status').value;
+  const checkIn = document.getElementById('mr-in').value;
+  const checkOut = document.getElementById('mr-out').value;
+  const notes = document.getElementById('mr-notes').value.trim();
+
+  let rec = records.find(r => r.staffId === staffId && r.date === date);
+  if(rec){
+    Object.assign(rec, { status, checkIn, checkOut, notes });
+  }else{
+    records.push({ id: uid(), staffId: worker.staffId, name: worker.name, department: worker.department,
+                    date, checkIn, checkOut, status, notes });
+  }
+  save(DB.records, records);
+  closeModal('modal-record');
+  renderOverview();
+  showToast('Attendance entry saved.');
+  return false;
+}
+
+function exportCSV(){
+  refreshData();
+  if(records.length === 0){ showToast('No records to export.'); return; }
+  const header = ['Name','Staff ID','Department','Date','Check In','Check Out','Status','Notes'];
+  const rows = records.map(r => [r.name, r.staffId, r.department, r.date, r.checkIn, r.checkOut, r.status, r.notes]);
+  const csv = [header, ...rows].map(row => row.map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'shiftlog-records-' + todayISO() + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- Admin password ---------- */
+function openChangePassword(){
+  document.getElementById('cp-current').value = '';
+  document.getElementById('cp-new').value = '';
+  openModal('modal-password');
+}
+function changeAdminPassword(e){
+  e.preventDefault();
+  refreshData();
+  const admin = admins.find(a => a.username === session.username);
+  const current = document.getElementById('cp-current').value;
+  const next = document.getElementById('cp-new').value;
+  if(admin.password !== current){ showToast('Current password is incorrect.'); return false; }
+  admin.password = next;
+  save(DB.admins, admins);
+  closeModal('modal-password');
+  showToast('Password updated.');
+  return false;
+}
+
+/* ==========================================================
+   Boot
+========================================================== */
+ensureSeed();
+refreshData();
+document.getElementById('mr-date') && (document.getElementById('mr-date').value = todayISO());
+
+if(session && session.role === 'worker'){ enterWorker(); }
+else if(session && session.role === 'admin'){ enterAdmin(); }
+else { showView('login'); }
+
+document.querySelectorAll('.modal-backdrop').forEach(m => {
+  m.addEventListener('click', (e)=>{ if(e.target === m) m.classList.remove('active'); });
+});
+</script>
+</body>
+</html>
