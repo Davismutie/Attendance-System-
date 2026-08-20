@@ -1,4 +1,4 @@
-# ShiftLog
+# TROD Log
 
 A lightweight staff attendance web app for workplaces — workers clock in/out themselves, and administrators manage staff and review records. Built as a single self-contained HTML file: no backend, no build step, no dependencies to install.
 
@@ -33,19 +33,19 @@ Change the admin password after first login, and update or remove the sample wor
 
 No installation needed — it's a single HTML file.
 
-1. Download `shiftlog.html` from this repo.
+1. Download `TROD log.html` from this repo.
 2. Open it directly in a browser, **or** deploy it as a static site (GitHub Pages, Netlify, Vercel, or any static host).
 3. Sign in as admin to add your real staff list, then share the page link with your team.
 
 ### Deploying to GitHub Pages
 
-1. Push `shiftlog.html` to your repo (rename to `index.html` if you want it served at the root).
+1. Push `TROD log.html` to your repo (rename to `index.html` if you want it served at the root).
 2. In the repo settings, enable **Pages** and point it at the branch/folder containing the file.
 3. Visit the published URL — workers and admins can both use the same link.
 
 ## How data is stored
 
-ShiftLog saves everything in the browser's `localStorage` — there is no server or database. This means:
+TROD Log saves everything in the browser's `localStorage` — there is no server or database. This means:
 
 - Data is **per device / per browser**. A worker punching in on their own phone stores that record on their phone, not on a shared server.
 - Clearing browser data/cache will erase the stored records.
@@ -56,7 +56,7 @@ If you need everyone's punches to sync to one shared source of truth, that requi
 ## Project structure
 
 ```
-shiftlog.html   → everything: markup, styles, and app logic in one file
+TROD log.html   → everything: markup, styles, and app logic in one file
 ```
 
 ## Customization
